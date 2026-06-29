@@ -175,7 +175,7 @@ useEffect(() => {
 
   async function stopTimer() {
     const endDate = new Date();
-    
+
     // Get the real start time from Supabase (works across devices)
     const { data: activeData } = await supabase
       .from('active_sessions')
@@ -186,24 +186,14 @@ useEffect(() => {
     const realStart = activeData?.start_time ? new Date(activeData.start_time).getTime() : timerStart;
     if (!realStart) return;
     const startDate = new Date(realStart);
+
     setTimerRunning(false);
     setTimerStart(null);
     localStorage.removeItem('logbook_active_timer');
 
     await supabase.from('active_sessions').delete().eq('user_id', user.id);
 
-    // Prevent overlapping with existing sessions
     const dateStr = fmtDateISO(startDate);
-    const hasOverlap = sessions.filter(s => s.date === dateStr).some(s => {
-      const overlapStart = startDate.getTime() + 1000;
-      return overlapStart < new Date(s.end).getTime() &&
-             endDate.getTime() > new Date(s.start).getTime();
-    });
-
-    if (hasOverlap) {
-      alert('This timer session overlaps with an existing logged session. Please delete the conflicting session first.');
-      return;
-    }
 
     await addSession({
       date: dateStr,
