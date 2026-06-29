@@ -174,9 +174,18 @@ useEffect(() => {
   }
 
   async function stopTimer() {
-    if (!timerStart) return;
-    const startDate = new Date(timerStart);
     const endDate = new Date();
+    
+    // Get the real start time from Supabase (works across devices)
+    const { data: activeData } = await supabase
+      .from('active_sessions')
+      .select('start_time')
+      .eq('user_id', user.id)
+      .single();
+
+    const realStart = activeData?.start_time ? new Date(activeData.start_time).getTime() : timerStart;
+    if (!realStart) return;
+    const startDate = new Date(realStart);
     setTimerRunning(false);
     setTimerStart(null);
     localStorage.removeItem('logbook_active_timer');
