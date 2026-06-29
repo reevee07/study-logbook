@@ -129,10 +129,11 @@ useEffect(() => {
         const startMs = new Date((payload.new as { start_time: string }).start_time).getTime();
         setTimerStart(startMs);
         setTimerRunning(true);
-      } else if (payload.eventType === 'DELETE') {
-        // Another device stopped the timer
+   } else if (payload.eventType === 'DELETE') {
+        // Another device stopped the timer — reset display
         setTimerRunning(false);
         setTimerStart(null);
+        setTimerDisplay('00:00:00');
         localStorage.removeItem('logbook_active_timer');
       }
     })
@@ -202,6 +203,7 @@ useEffect(() => {
       note: '',
     });
   }
+
 
   async function addSession({ date, startISO, endISO, note }: { date: string; startISO: string; endISO: string; note: string }) {
     const dur = Math.max(0, Math.round((new Date(endISO).getTime() - new Date(startISO).getTime()) / 60000));
