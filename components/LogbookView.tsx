@@ -186,7 +186,8 @@ useEffect(() => {
     // Prevent overlapping with existing sessions
     const dateStr = fmtDateISO(startDate);
     const hasOverlap = sessions.filter(s => s.date === dateStr).some(s => {
-      return startDate.getTime() < new Date(s.end).getTime() &&
+      const overlapStart = startDate.getTime() + 1000;
+      return overlapStart < new Date(s.end).getTime() &&
              endDate.getTime() > new Date(s.start).getTime();
     });
 
