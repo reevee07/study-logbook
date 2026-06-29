@@ -289,9 +289,17 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
     setGoals(prev => [...prev, { id: makeGoalId(), name: '', totalHrs: '', deadline: '' }]);
   }
 
-  function removeGoal(id: string) {
+  async function removeGoal(id: string) {
     if (goals.length <= 1) return;
-    setGoals(prev => prev.filter(g => g.id !== id));
+    if (!confirm('Delete this goal? This cannot be undone.')) return;
+const updatedGoals = goals.filter(g => g.id !== id);
+    setGoals(updatedGoals);
+    await supabase.from('profiles').update({
+      goals: updatedGoals,
+      goal_total_hrs: updatedGoals[0]?.totalHrs ? parseFloat(updatedGoals[0].totalHrs) : null,
+      goal_deadline: updatedGoals[0]?.deadline || null,
+    }).eq('id', user.id);
+    onProfileUpdate();
   }
 
   // Derived stats
