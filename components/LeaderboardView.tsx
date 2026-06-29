@@ -27,7 +27,8 @@ export default function LeaderboardView({ currentUserId }: { currentUserId: stri
   const [entries, setEntries] = useState<LeaderEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortKey>('today');
-  const [lastRefresh, setLastRefresh] = useState(new Date());
+ const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [showAll, setShowAll] = useState(false);
 
   // Stable date strings — computed once on mount, not on every render
   const todayISO = useRef(fmtDateISO(new Date())).current;
@@ -128,7 +129,7 @@ export default function LeaderboardView({ currentUserId }: { currentUserId: stri
         </div>
 
         <div>
-          {sortedEntries.map((entry, i) => {
+          {(showAll ? sortedEntries : sortedEntries.slice(0, 3)).map((entry, i) => {
             const isMe = entry.user_id === currentUserId;
             const displayMins = sort === 'today' ? entry.today_mins : sort === 'week' ? entry.week_mins : entry.total_mins;
             const pct = maxMins > 0 ? (displayMins / maxMins) * 100 : 0;
@@ -157,6 +158,16 @@ export default function LeaderboardView({ currentUserId }: { currentUserId: stri
             );
           })}
         </div>
+
+        {sortedEntries.length > 3 && (
+          <button
+            className="btn btn-ghost small"
+            onClick={() => setShowAll(prev => !prev)}
+            style={{ width: '100%', textAlign: 'center', marginTop: 12 }}
+          >
+            {showAll ? '▲ Show less' : `▼ Show all ${sortedEntries.length} players`}
+          </button>
+        )}
       </section>
 
       {/* Your snapshot */}

@@ -267,6 +267,18 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
   }
 
   const [targetsSaved, setTargetsSaved] = useState(false);
+  const [showAddSession, setShowAddSession] = useState(false);
+  const [showGoalEditor, setShowGoalEditor] = useState(false);
+  const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
+  const [showLog, setShowLog] = useState(false);
+
+  function toggleDate(date: string) {
+    setCollapsedDates(prev => {
+      const next = new Set(prev);
+      next.has(date) ? next.delete(date) : next.add(date);
+      return next;
+    });
+  }
   async function saveTargets() {
     await supabase.from('profiles').update({
       daily_target_hrs: dailyTarget,
@@ -463,11 +475,15 @@ const updatedGoals = goals.filter(g => g.id !== id);
             <button className="btn btn-ghost small" onClick={saveTargets} style={{ marginLeft: 'auto' }}>{targetsSaved ? '✓ Saved' : 'Save targets'}</button>
           </div>
 
-          {/* Subject goals */}
+         {/* Subject goals */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <span style={{ color: 'var(--ink-dim)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Subject goals</span>
-              {goals.length < 5 && (
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button className="btn btn-ghost small" onClick={() => setShowGoalEditor(p => !p)}>
+                  {showGoalEditor ? 'Done' : 'Edit goals'}
+                </button>
+              {goals.length < 5 && showGoalEditor && (
                 <button
                   onClick={addGoal}
                   style={{
@@ -483,9 +499,10 @@ const updatedGoals = goals.filter(g => g.id !== id);
                   }}
                 >+ Add goal</button>
               )}
+              </div>
             </div>
 
-            {goals.map((goal, idx) => {
+            {showGoalEditor && goals.map((goal, idx) => {
               const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
               const { subjectMins, goalMins, goalPct } = goalStats(goal);
               return (
@@ -639,8 +656,13 @@ const updatedGoals = goals.filter(g => g.id !== id);
 
       {/* MANUAL ENTRY */}
       <section className="panel">
-        <div className="panel-head"><h2>Add a session</h2></div>
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed var(--ink-line)' }}>
+        <div className="panel-head">
+          <h2>Add a session</h2>
+          <button className="btn btn-ghost small" onClick={() => setShowAddSession(p => !p)}>
+            {showAddSession ? '▲ Hide' : '+ Add session'}
+          </button>
+        </div>
+        {showAddSession && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed var(--ink-line)' }}>
           <div className="field">
             <label htmlFor="entryDate">Date</label>
             <input type="date" id="entryDate" value={entryDate} max={todayISO} onChange={e => setEntryDate(e.target.value)} />
@@ -684,10 +706,19 @@ const updatedGoals = goals.filter(g => g.id !== id);
             <input type="text" id="entryNote" value={entryNote} onChange={e => setEntryNote(e.target.value)} placeholder="e.g. Organic chemistry, ch. 4" />
           </div>
           <button className="btn btn-amber" onClick={handleAddEntry}>Log session</button>
-        </div>
+        </div>}
 
         {/* Logbook list */}
-        {loading ? (
+        <div style={{ marginBottom: 16 }}>
+          <button
+            className="btn btn-ghost small"
+            onClick={() => setShowLog(prev => !prev)}
+            style={{ width: '100%', textAlign: 'center' }}
+          >
+            {showLog ? '▲ Hide session log' : '▼ View session log'}
+          </button>
+        </div>
+        {showLog && (loading ? (
           <div style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div>
         ) : sessions.length === 0 ? (
           <div className="empty-state">
@@ -703,14 +734,14 @@ const updatedGoals = goals.filter(g => g.id !== id);
               const isToday = date === todayISO;
               const dayName = isToday ? 'Today' : dateObj.toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric' });
               const tally = '|'.repeat(Math.min(daySessions.length, 12));
-
+const isCollapsed = collapsedDates.has(date);
               return (
                 <div key={date} className="day-group">
-                  <div className="day-head">
+                  <div className="day-head" onClick={() => toggleDate(date)} style={{ cursor: 'pointer', userSelect: 'none' }}>
                     <span className="day-name">{dayName} <span className="tally">{tally}</span></span>
-                    <span className="day-total mono">{minutesToLabel(dayTotal)}</span>
+                    <span className="day-total mono">{minutesToLabel(dayTotal)} <span style={{ opacity: 0.4, fontSize: 11 }}>{isCollapsed ? '▼' : '▲'}</span></span>
                   </div>
-                  {daySessions.map((s, idx) => {
+                  {!isCollapsed && daySessions.map((s, idx) => {
                     const startT = new Date(s.start).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
                     const endT = new Date(s.end).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
                     const dur = durationMinutes(s);
@@ -739,13 +770,13 @@ const updatedGoals = goals.filter(g => g.id !== id);
                         <span className="entry-note">{s.note}</span>
                         <button className="entry-del" onClick={() => deleteSession(s.id)} aria-label="Delete session">×</button>
                       </div>
-                    );
-                  })}
-                </div>
-              );
+);
             })}
+            </div>
+          );
+        })}
           </div>
-        )}
+        ))}
       </section>
 
       {/* CHART */}
