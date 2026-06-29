@@ -13,8 +13,16 @@ export type Session = {
   start: string;
   end: string;
   note: string;
+  subject: string;
   duration_minutes: number;
   created_at: string;
+};
+
+export type SubjectGoal = {
+  id: string;
+  name: string;
+  totalHrs: string;
+  deadline: string;
 };
 
 export type UserProfile = {
@@ -23,5 +31,6 @@ export type UserProfile = {
   daily_target_hrs: number;
   goal_total_hrs: number | null;
   goal_deadline: string | null;
+  goals: SubjectGoal[] | null;
   created_at: string;
 };
