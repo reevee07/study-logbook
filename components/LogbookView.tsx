@@ -52,6 +52,7 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
   const [timerStart, setTimerStart] = useState<number | null>(null);
   const [timerDisplay, setTimerDisplay] = useState('00:00:00');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const actionLockRef = useRef(false);
 
   const [entryDate, setEntryDate] = useState(fmtDateISO(new Date()));
   const [entryStart, setEntryStart] = useState('');
@@ -132,7 +133,8 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
       if (saved) {
         try {
           const { start, subject } = JSON.parse(saved);
-          if (typeof start === 'number' && start > 0 && start < Date.now()) {
+          const hoursElapsed = (Date.now() - start) / (1000 * 60 * 60);
+if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed < 12) {
             setTimerStart(start);
             setTimerRunning(true);
             if (subject) setTimerSubject(subject);
@@ -188,15 +190,24 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
   }, [timerRunning, timerStart]);
 
   async function startTimer() {
+  if (actionLockRef.current) return;
+  actionLockRef.current = true;
+  try {
     const now = new Date();
     const nowMs = now.getTime();
     await supabase.from('active_sessions').upsert({ user_id: user.id, start_time: now.toISOString() });
     setTimerStart(nowMs);
     setTimerRunning(true);
     localStorage.setItem('logbook_active_timer', JSON.stringify({ start: nowMs, subject: timerSubject }));
+  } finally {
+    actionLockRef.current = false;
   }
+}
 
   async function stopTimer() {
+  if (actionLockRef.current) return;
+  actionLockRef.current = true;
+  try {
     const endDate = new Date();
     const { data: activeData } = await supabase
       .from('active_sessions').select('start_time').eq('user_id', user.id).single();
@@ -215,7 +226,10 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
       subject: timerSubject,
     });
     setTimerSubject('');
+  } finally {
+    actionLockRef.current = false;
   }
+}
 
   async function addSession({ date, startISO, endISO, note, subject }: {
     date: string; startISO: string; endISO: string; note: string; subject: string;
