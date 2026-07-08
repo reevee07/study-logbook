@@ -47,6 +47,31 @@ function Ring({ pct, value, label, accent }: { pct: number; value: string; label
   );
 }
 
+// Ring-based action button — used for the Daily Target / Add Session /
+// View Session / Add Goals toolbar. Reuses the same ring math as <Ring/>.
+function RingActionButton({ pct, icon, label, onClick, active }: {
+  pct: number; icon: React.ReactNode; label: string; onClick: () => void; active?: boolean;
+}) {
+  return (
+    <button type="button" className={`ring-action-btn${active ? ' active' : ''}`} onClick={onClick}>
+      <span className="ring-action-ring-wrap">
+        <svg className="ring-action-progress-svg" viewBox="0 0 76 76">
+          <circle cx="38" cy="38" r={RING_R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+          <circle
+            cx="38" cy="38" r={RING_R} fill="none"
+            stroke="var(--amber)" strokeWidth="6" strokeLinecap="round"
+            strokeDasharray={RING_C} strokeDashoffset={ringDashoffset(pct)}
+            transform="rotate(-90 38 38)"
+            style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+          />
+        </svg>
+        <span className="ring-action-icon">{icon}</span>
+      </span>
+      <span className="ring-action-label">{label}</span>
+    </button>
+  );
+}
+
 // Subject goal colors — cycling through these for each goal pill
 const SUBJECT_COLORS = [
   { bg: 'rgba(100,200,150,0.12)', border: 'rgba(100,200,150,0.45)', accent: '#64c896', label: 'sage' },
@@ -61,6 +86,10 @@ interface SubjectGoal {
   name: string;
   totalHrs: string;
   deadline: string;
+  // Marks the permanent "catch-all" goal that absorbs any session logged
+  // with no subject tag — set once, survives renaming/reordering, and is
+  // automatically handed to another goal if this one is ever deleted.
+  isDefault?: boolean;
 }
 
 function makeGoalId() {
@@ -95,7 +124,15 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
   // Multi-subject goals
   const [goals, setGoals] = useState<SubjectGoal[]>(() => {
     const saved = (profile as any).goals;
-    if (Array.isArray(saved) && saved.length > 0) return saved;
+    if (Array.isArray(saved) && saved.length > 0) {
+      // Migration: older saved goal lists predate the isDefault flag. If none
+      // of them have it set, grant it to the first goal so there's always
+      // exactly one permanent catch-all for untagged sessions.
+      if (!saved.some((g: SubjectGoal) => g.isDefault)) {
+        return saved.map((g: SubjectGoal, idx: number) => idx === 0 ? { ...g, isDefault: true } : g);
+      }
+      return saved;
+    }
     // Migrate legacy single goal
     if (profile.goal_total_hrs || profile.goal_deadline) {
       return [{
@@ -103,10 +140,12 @@ export default function LogbookView({ user, profile, onProfileUpdate }: {
         name: 'Study',
         totalHrs: profile.goal_total_hrs?.toString() ?? '',
         deadline: profile.goal_deadline ?? '',
+        isDefault: true,
       }];
     }
-    return [{ id: makeGoalId(), name: 'Study', totalHrs: '', deadline: '' }];
+    return [{ id: makeGoalId(), name: 'Study', totalHrs: '', deadline: '', isDefault: true }];
   });
+
 
   const [todayISO, setTodayISO] = useState(fmtDateISO(new Date()));
 
@@ -335,6 +374,7 @@ if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed
   const [targetsSaved, setTargetsSaved] = useState(false);
   const [showAddSession, setShowAddSession] = useState(false);
   const [showGoalEditor, setShowGoalEditor] = useState(false);
+  const [showDailyTargetEditor, setShowDailyTargetEditor] = useState(false);
   const [collapsedDates, setCollapsedDates] = useState<Set<string>>(new Set());
   const [showLog, setShowLog] = useState(false);
 
@@ -358,6 +398,20 @@ if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed
     setTimeout(() => setTargetsSaved(false), 2000);
   }
 
+  const [goalsSaved, setGoalsSaved] = useState(false);
+
+  async function saveGoals() {
+    await supabase.from('profiles').update({
+      goals: goals,
+      // keep legacy columns in sync with first goal for backwards compat
+      goal_total_hrs: goals[0]?.totalHrs ? parseFloat(goals[0].totalHrs) : null,
+      goal_deadline: goals[0]?.deadline || null,
+    }).eq('id', user.id);
+    onProfileUpdate();
+    setGoalsSaved(true);
+    setTimeout(() => setGoalsSaved(false), 2000);
+  }
+
   function updateGoal(id: string, field: keyof SubjectGoal, value: string) {
     setGoals(prev => prev.map(g => g.id === id ? { ...g, [field]: value } : g));
   }
@@ -370,7 +424,13 @@ if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed
   async function removeGoal(id: string) {
     if (goals.length <= 1) return;
     if (!confirm('Delete this goal? This cannot be undone.')) return;
-const updatedGoals = goals.filter(g => g.id !== id);
+    const deletedWasDefault = goals.find(g => g.id === id)?.isDefault;
+    let updatedGoals = goals.filter(g => g.id !== id);
+    // The default catch-all must always exist — if we just removed it, hand
+    // the flag to the new first goal so untagged sessions never lose a home.
+    if (deletedWasDefault && !updatedGoals.some(g => g.isDefault)) {
+      updatedGoals = updatedGoals.map((g, idx) => idx === 0 ? { ...g, isDefault: true } : g);
+    }
     setGoals(updatedGoals);
     await supabase.from('profiles').update({
       goals: updatedGoals,
@@ -389,9 +449,24 @@ const updatedGoals = goals.filter(g => g.id !== id);
 
   // Per-goal stats
   function goalStats(goal: SubjectGoal) {
-    const subjectSessions = goal.name
-      ? sessions.filter(s => ((s as any).subject || '').toLowerCase() === goal.name.toLowerCase())
-      : sessions;
+    // The permanent default (catch-all) goal absorbs:
+    //  - sessions with no subject tag at all, and
+    //  - sessions tagged with a subject that doesn't match ANY currently
+    //    existing goal — e.g. a leftover tag like "labsbuzz" from before you
+    //    renamed this goal to "alpha". That way renaming the default goal
+    //    can never orphan old sessions, no matter how many times you rename
+    //    it, and no database writes are ever needed.
+    // Any other (non-default) goal only counts sessions explicitly tagged
+    // with its own current name.
+    const otherGoalNames = new Set(
+      goals.filter(g => !g.isDefault && g.name).map(g => g.name.toLowerCase())
+    );
+    const subjectSessions = sessions.filter(s => {
+      const subj = ((s as any).subject || '').trim().toLowerCase();
+      if (goal.name && subj === goal.name.toLowerCase()) return true;
+      if (goal.isDefault && !otherGoalNames.has(subj)) return true;
+      return false;
+    });
     const subjectMins = subjectSessions.reduce((sum, s) => sum + durationMinutes(s), 0);
     const goalMins = goal.totalHrs ? parseFloat(goal.totalHrs) * 60 : 0;
     const goalPct = goalMins > 0 ? Math.min(999, Math.round((subjectMins / goalMins) * 100)) : 0;
@@ -407,6 +482,12 @@ const updatedGoals = goals.filter(g => g.id !== id);
     }
     return { subjectMins, goalMins, goalPct, daysLeft, neededPerDay };
   }
+
+  // Live average progress across all subject goals — feeds the "Add Goals" ring
+  const goalPctList = goals.map(g => goalStats(g).goalPct);
+  const avgGoalPct = goalPctList.length > 0
+    ? Math.round(goalPctList.reduce((a, b) => a + b, 0) / goalPctList.length)
+    : 0;
 
   // Unique subjects from goals for the session dropdown
   const subjectOptions = goals.map(g => g.name).filter(Boolean);
@@ -615,23 +696,67 @@ const updatedGoals = goals.filter(g => g.id !== id);
         })}
       </div>
 
-      {/* TARGETS, GOALS & ADD SESSION — merged into one section */}
+      {/* TARGETS, GOALS & ADD SESSION — ring-based live action toolbar */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-        <div className="target-row" style={{ flexDirection: 'column', gap: 12, alignItems: 'stretch', margin: 0, padding: 0, border: 'none' }}>
-          {/* Daily target */}
+        <div className="ring-action-row">
+          <RingActionButton
+            pct={targetMins > 0 ? progressPct : 0}
+            active={showDailyTargetEditor}
+            onClick={() => setShowDailyTargetEditor(p => !p)}
+            label="Daily Target"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="4" width="18" height="18" rx="2" />
+                <line x1="16" y1="2" x2="16" y2="6" />
+                <line x1="8" y1="2" x2="8" y2="6" />
+                <line x1="3" y1="10" x2="21" y2="10" />
+              </svg>
+            }
+          />
+          <RingActionButton
+            pct={showAddSession ? 100 : 15}
+            active={showAddSession}
+            onClick={() => setShowAddSession(p => !p)}
+            label="Add Session"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="10" y1="2" x2="14" y2="2" />
+                <line x1="12" y1="14" x2="15" y2="11" />
+                <circle cx="12" cy="14" r="8" />
+              </svg>
+            }
+          />
+          <RingActionButton
+            pct={showLog ? 100 : (sessions.length > 0 ? 35 : 0)}
+            active={showLog}
+            onClick={() => setShowLog(p => !p)}
+            label="View Session"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </svg>
+            }
+          />
+          <RingActionButton
+            pct={avgGoalPct}
+            active={showGoalEditor}
+            onClick={() => setShowGoalEditor(p => !p)}
+            label="Add Goals"
+            icon={
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="5" />
+                <circle cx="12" cy="12" r="1" fill="currentColor" />
+              </svg>
+            }
+          />
+        </div>
+
+        {/* Daily target — revealed by the Daily Target ring */}
+        {showDailyTargetEditor && (
           <div className="target-card">
             <div className="target-card-label">
-              <span style={{
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                width: 30, height: 30, borderRadius: '50%',
-                background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
-              }}>
-                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="9" />
-                  <circle cx="12" cy="12" r="4.5" />
-                  <circle cx="12" cy="12" r="0.8" fill="currentColor" />
-                </svg>
-              </span>
               <label htmlFor="dailyTargetInput" style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Daily target</label>
             </div>
             <div className="target-card-controls">
@@ -651,28 +776,17 @@ const updatedGoals = goals.filter(g => g.id !== id);
               >{targetsSaved ? '✓ Saved' : 'Save targets'}</button>
             </div>
           </div>
+        )}
 
-         {/* Subject goals */}
+        {/* Subject goals — revealed by the Add Goals ring */}
+        {showGoalEditor && (
           <div className="subject-card">
             <div className="subject-card-head">
               <div className="target-card-label">
-                <span style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 30, height: 30, borderRadius: '50%',
-                  background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
-                }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M4 4v16" />
-                    <path d="M4 4h13l-2.5 4L17 12H4" />
-                  </svg>
-                </span>
                 <span style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600 }}>Subject goals</span>
               </div>
-              <div className="subject-card-actions">
-                <button className="btn btn-ghost small" onClick={() => setShowGoalEditor(p => !p)}>
-                  {showGoalEditor ? 'Done' : 'Edit goals'}
-                </button>
-              {goals.length < 5 && showGoalEditor && (
+              <div className="subject-card-actions" style={{ display: 'flex', gap: 8 }}>
+              {goals.length < 5 && (
                 <button
                   onClick={addGoal}
                   style={{
@@ -689,15 +803,31 @@ const updatedGoals = goals.filter(g => g.id !== id);
                   }}
                 >+ Add goal</button>
               )}
+              <button
+                onClick={saveGoals}
+                style={{
+                  background: goalsSaved ? 'rgba(52,211,153,0.12)' : 'rgba(255,255,255,0.05)',
+                  border: goalsSaved ? '1px solid rgba(52,211,153,0.4)' : '1px solid var(--ink-line)',
+                  color: goalsSaved ? '#34d399' : 'var(--paper)',
+                  borderRadius: 6,
+                  padding: '3px 10px',
+                  fontSize: 12,
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                  letterSpacing: '0.04em',
+                  whiteSpace: 'nowrap',
+                }}
+              >{goalsSaved ? '✓ Saved' : 'Save goals'}</button>
               </div>
             </div>
 
-            {showGoalEditor && goals.map((goal, idx) => {
+            {goals.map((goal, idx) => {
               const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
               const { subjectMins, goalMins, goalPct } = goalStats(goal);
               return (
                 <div
                   key={goal.id}
+                  className="goal-editor-row"
                   style={{
                     display: 'grid',
                     gridTemplateColumns: '1fr auto auto auto auto',
@@ -710,23 +840,42 @@ const updatedGoals = goals.filter(g => g.id !== id);
                   }}
                 >
                   {/* Subject name */}
-                  <input
-                    type="text"
-                    placeholder="Subject name (e.g. Study, Trading)"
-                    value={goal.name}
-                    onChange={e => updateGoal(goal.id, 'name', e.target.value)}
-                    style={{
-                      background: 'rgba(255,255,255,0.05)',
-                      border: `1px solid ${color.border}`,
-                      borderRadius: 6,
-                      padding: '5px 10px',
-                      color: color.accent,
-                      fontSize: 13,
-                      fontWeight: 700,
-                      outline: 'none',
-                      minWidth: 120,
-                    }}
-                  />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 120 }}>
+                    <input
+                      type="text"
+                      placeholder="Subject name (e.g. Study, Trading)"
+                      value={goal.name}
+                      onChange={e => updateGoal(goal.id, 'name', e.target.value)}
+                      style={{
+                        background: 'rgba(255,255,255,0.05)',
+                        border: `1px solid ${color.border}`,
+                        borderRadius: 6,
+                        padding: '5px 10px',
+                        color: color.accent,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        outline: 'none',
+                        minWidth: 120,
+                        flex: 1,
+                      }}
+                    />
+                    {goal.isDefault && (
+                      <span
+                        title="Sessions logged with no subject tag (including everything logged before you added named goals) always count here."
+                        style={{
+                          fontSize: 9,
+                          fontWeight: 700,
+                          letterSpacing: '0.05em',
+                          textTransform: 'uppercase',
+                          color: 'var(--ink-dim)',
+                          border: '1px solid var(--ink-line)',
+                          borderRadius: 20,
+                          padding: '2px 6px',
+                          whiteSpace: 'nowrap',
+                        }}
+                      >Default</span>
+                    )}
+                  </div>
 
                   {/* Goal hrs */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
@@ -788,34 +937,7 @@ const updatedGoals = goals.filter(g => g.id !== id);
               );
             })}
           </div>
-          {/* Add a session */}
-          <div className="session-card">
-            <div className="session-card-head">
-              <div className="target-card-label">
-                <span style={{
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  width: 30, height: 30, borderRadius: '50%',
-                  background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
-                }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                </span>
-                <span style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600 }}>Add a session</span>
-              </div>
-              <button className="btn btn-ghost small" onClick={() => setShowAddSession(p => !p)}>
-                {showAddSession ? '▲ Hide' : '+ Add session'}
-              </button>
-            </div>
-            <button
-              className="btn btn-ghost small"
-              onClick={() => setShowLog(prev => !prev)}
-              style={{ width: '100%', textAlign: 'center' }}
-            >
-              {showLog ? '▲ Hide session log' : '▼ View session log'}
-            </button>
-          </div>
-        </div>
+        )}
 
         {showAddSession && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed var(--ink-line)' }}>
           <div className="field">
@@ -927,7 +1049,7 @@ const isCollapsed = collapsedDates.has(date);
       {/* CHART */}
       <section className="panel">
         <div className="panel-head">
-          <h2>Study time graph</h2>
+          <h2>Focus Graph</h2>
           <div className="range-toggle">
             {([14, 30, 90] as const).map(r => (
               <button key={r} className={range === r ? 'active' : ''} onClick={() => setRange(r)}>{r} days</button>

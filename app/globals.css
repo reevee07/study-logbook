@@ -159,27 +159,17 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
   border-color: rgba(232, 178, 62, 0.4);
 }
 
-.topbar-mark {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--amber);
-  flex-shrink: 0;
-}
-
-.topbar-mark svg {
-  width: 20px;
-  height: 20px;
-}
-
 .topbar-logo {
+  font-family: 'Inter', sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.02em;
   font-size: 26px;
   color: var(--paper);
   white-space: nowrap;
 }
 
 .topbar-logo-accent {
-  color: var(--amber);
+  color: #22C55E;
 }
 
 .topbar-date {
@@ -194,6 +184,7 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
   flex-shrink: 0;
   display: flex;
   align-items: center;
+  position: relative;
 }
 
 .topbar-avatar-ring {
@@ -205,7 +196,75 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
   align-items: center;
   justify-content: center;
   color: var(--paper);
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: border-color .15s ease;
 }
+
+.topbar-avatar-ring:hover {
+  border-color: var(--sage);
+}
+
+.topbar-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.topbar-avatar-spinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(6, 11, 8, 0.6);
+  border: 2px solid var(--ink-line);
+  border-top-color: var(--amber);
+  animation: spin .7s linear infinite;
+}
+
+.profile-menu {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  min-width: 190px;
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 12px;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  z-index: 20;
+}
+
+.profile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: none;
+  border: none;
+  color: var(--paper);
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  padding: 9px 10px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background .12s ease;
+}
+
+.profile-menu-item svg { flex-shrink: 0; color: var(--muted); }
+
+.profile-menu-item:hover { background: var(--ink); }
+
+.profile-menu-item.danger { color: var(--brick); }
+.profile-menu-item.danger svg { color: var(--brick); }
+.profile-menu-item.danger:hover { background: rgba(244, 113, 113, 0.1); }
 
 .topbar-user-name {
   font-size: 11px;
@@ -240,7 +299,6 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
     gap: 8px;
   }
   .topbar-logo { font-size: 19px; }
-  .topbar-mark svg { width: 15px; height: 15px; }
   .topbar-date { font-size: 12px; padding-left: 6px; }
   .topbar-avatar-ring {
     width: 48px;
@@ -249,6 +307,8 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
   .topbar-avatar-ring svg { width: 22px; height: 22px; }
   .topbar-user-name { font-size: 10px; max-width: 64px; }
   .topbar-signout { font-size: 9px; }
+  .profile-menu { min-width: 170px; right: -6px; }
+  .profile-menu-item { font-size: 12.5px; padding: 8px 9px; }
 }
 
 /* Range toggle */
@@ -482,6 +542,68 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
 .target-card, .subject-card, .session-card { min-height: 104px; box-sizing: border-box; justify-content: space-between; }
 .subject-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
+/* Ring-based action toolbar — Daily Target / Add Session / View Session / Add Goals */
+.ring-action-row {
+  display: flex;
+  justify-content: space-around;
+  align-items: flex-start;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.ring-action-btn {
+  background: none;
+  border: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 4px;
+  flex: 1 1 76px;
+  min-width: 76px;
+  font-family: inherit;
+  -webkit-tap-highlight-color: transparent;
+}
+.ring-action-btn:active { transform: scale(0.96); }
+.ring-action-ring-wrap {
+  position: relative;
+  width: 72px;
+  height: 72px;
+  transition: filter .15s ease;
+}
+.ring-action-progress-svg { display: block; width: 100%; height: 100%; }
+.ring-action-icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--muted);
+  transition: color .15s ease;
+}
+.ring-action-icon svg { width: 20px; height: 20px; flex-shrink: 0; }
+.ring-action-btn.active .ring-action-icon { color: var(--amber); }
+.ring-action-btn:hover .ring-action-icon { color: var(--paper); }
+.ring-action-label {
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--muted);
+  text-align: center;
+  font-weight: 600;
+  transition: color .15s ease;
+  white-space: nowrap;
+}
+.ring-action-btn.active .ring-action-label,
+.ring-action-btn:hover .ring-action-label { color: var(--paper); }
+
+@media (max-width: 640px) {
+  .ring-action-row { justify-content: space-between; gap: 2px; }
+  .ring-action-btn { flex: 1 1 72px; min-width: 66px; }
+  .ring-action-ring-wrap { width: 66px; height: 66px; }
+  .ring-action-icon svg { width: 19px; height: 19px; }
+  .ring-action-label { font-size: 9.5px; }
+}
+
 footer { text-align: center; color: var(--ink-line); font-size: 12px; margin-top: 40px; }
 
 @media (max-width: 640px) {
@@ -516,12 +638,20 @@ footer { text-align: center; color: var(--ink-line); font-size: 12px; margin-top
   .session-card-head { flex-direction: column; align-items: stretch; gap: 10px; }
   .target-card, .subject-card, .session-card { min-height: 0; }
 
-  /* Make goal grid stack on mobile */
-  [style*="gridTemplateColumns: '1fr auto auto auto auto'"] {
+  /* Make goal row stack cleanly on mobile — was previously targeting an
+     inline-style attribute selector that never matched the rendered DOM,
+     which caused the row to overflow horizontally */
+  .goal-editor-row {
     display: flex !important;
-    flex-wrap: wrap !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
     gap: 8px !important;
   }
+  .goal-editor-row input[type="text"] { width: 100% !important; min-width: 0 !important; }
+  .goal-editor-row > div { width: 100%; justify-content: space-between; }
+  .goal-editor-row input[type="number"] { flex: 1; width: auto !important; min-width: 0; }
+  .goal-editor-row input[type="date"] { flex: 1; max-width: none; min-width: 0; }
+  .goal-editor-row > button { align-self: flex-end; }
 
   /* Add session form */
   .panel { padding: 16px 12px; }
