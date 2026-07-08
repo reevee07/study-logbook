@@ -235,15 +235,34 @@ if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed
   actionLockRef.current = true;
   try {
     const endDate = new Date();
-    const { data: activeData } = await supabase
-      .from('active_sessions').select('start_time').eq('user_id', user.id).single();
-    const realStart = activeData?.start_time ? new Date(activeData.start_time).getTime() : timerStart;
-    if (!realStart) return;
-    const startDate = new Date(realStart);
+
+    // Atomically delete the active_sessions row and read back what was deleted.
+    // This is the fix for the duplicate-log bug: if two devices are watching
+    // the same running timer and both hit "Stop", only the delete that
+    // actually removes the row (the DB serializes this) gets start_time back.
+    // The other device's delete matches nothing, so it skips logging instead
+    // of inserting a second, near-identical session.
+    const { data: deletedRows } = await supabase
+      .from('active_sessions')
+      .delete()
+      .eq('user_id', user.id)
+      .select();
+
     setTimerRunning(false);
     setTimerStart(null);
     localStorage.removeItem('logbook_active_timer');
-    await supabase.from('active_sessions').delete().eq('user_id', user.id);
+
+    const deletedStart = deletedRows?.[0]?.start_time;
+    const realStart = deletedStart ? new Date(deletedStart).getTime() : null;
+
+    if (!realStart) {
+      // Nothing left to delete — another device already stopped and logged
+      // this same timer. Just clear local state, don't log a duplicate.
+      setTimerSubject('');
+      return;
+    }
+
+    const startDate = new Date(realStart);
     await addSession({
       date: fmtDateISO(startDate),
       startISO: startDate.toISOString(),
@@ -260,6 +279,13 @@ if (typeof start === 'number' && start > 0 && start < Date.now() && hoursElapsed
   async function addSession({ date, startISO, endISO, note, subject }: {
     date: string; startISO: string; endISO: string; note: string; subject: string;
   }) {
+    // Defense-in-depth: skip if a near-identical session already exists
+    // (e.g. same start time to the minute) so a retried/duplicate call
+    // from any code path can't create a second row.
+    const startMs = new Date(startISO).getTime();
+    const alreadyLogged = sessions.some(s => Math.abs(new Date(s.start).getTime() - startMs) < 60000);
+    if (alreadyLogged) return;
+
     const dur = Math.max(0, Math.round((new Date(endISO).getTime() - new Date(startISO).getTime()) / 60000));
     await supabase.from('sessions').insert({
       user_id: user.id,
