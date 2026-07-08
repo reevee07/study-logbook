@@ -93,10 +93,11 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
 .stat-value.brick { color: var(--brick); }
 
 /* Progress bar */
+.progress-row { width: 100%; }
 .progress-track { height: 10px; background: var(--ink); border-radius: 5px; overflow: hidden; border: 1px solid var(--ink-line); }
 .progress-fill { height: 100%; background: var(--sage); transition: width .3s ease; }
 .progress-fill.over { background: var(--amber); }
-.progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-top: 6px; font-family: 'JetBrains Mono', monospace; }
+.progress-meta { display: flex; justify-content: space-between; font-size: 12px; color: var(--sage); margin-top: 8px; font-family: 'JetBrains Mono', monospace; }
 
 /* Entry lines */
 .entry-line {
@@ -325,15 +326,97 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
 .nav-tab.active { background: var(--ink-soft); color: var(--paper); border: 1px solid var(--ink-line); }
 
 /* Timer */
-.hero { background: var(--ink-soft); border: 1px solid var(--ink-line); border-radius: 20px; padding: 28px; margin-bottom: 24px; }
-.hero-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap; }
+.hero {
+  background: var(--ink-soft);
+  border: 1px solid var(--ink-line);
+  border-radius: 20px;
+  padding: 32px 28px;
+  margin-bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
 .hero-label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+
+/* Badge pill at top of hero */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--ink);
+  border: 1px solid var(--ink-line);
+  border-radius: 99px;
+  padding: 6px 18px 6px 8px;
+  margin-bottom: 22px;
+}
+.hero-badge-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--sage-deep);
+  color: var(--paper);
+  flex-shrink: 0;
+}
+.hero-badge-label {
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+/* Big total time */
 .hero-total { font-size: 56px; font-weight: 600; line-height: 1; font-family: 'JetBrains Mono', monospace; }
 .hero-total .unit { font-size: 22px; color: var(--muted); margin-left: 8px; }
+.hero-total-centered {
+  font-size: 56px;
+  font-weight: 600;
+  line-height: 1;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 18px;
+}
+.hero-total-centered .hrs { color: var(--sage); }
+.hero-total-centered .mins { color: var(--paper); }
+
 .hero-sub { font-size: 13px; color: var(--muted); margin-top: 6px; }
+
+/* Sessions logged pill */
+.hero-sessions-pill {
+  display: inline-flex;
+  align-items: center;
+  background: var(--ink);
+  border: 1px solid var(--ink-line);
+  border-radius: 99px;
+  padding: 6px 16px;
+  font-size: 13px;
+  color: var(--muted);
+  margin-bottom: 26px;
+}
+
+.hero-divider {
+  width: 100%;
+  border-top: 1px solid var(--ink-line);
+  margin-bottom: 26px;
+}
+
 .timer-block { text-align: right; }
 .timer-display { font-size: 34px; font-weight: 600; letter-spacing: 0.02em; font-family: 'JetBrains Mono', monospace; }
 .timer-display.running { color: var(--amber); }
+
+.timer-display-centered {
+  font-size: 40px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  font-family: 'JetBrains Mono', monospace;
+  margin-bottom: 22px;
+}
+.timer-display-centered.running { color: var(--amber); }
+
+.hero-start-btn { min-width: 200px; justify-content: center; padding: 12px 28px; }
 
 .tally { letter-spacing: 2px; color: var(--amber); font-size: 13px; }
 .day-head { display: flex; justify-content: space-between; align-items: baseline; padding: 10px 0 8px; }
@@ -365,6 +448,30 @@ input:focus, select:focus { outline: 1px solid var(--amber); }
   border-radius: 4px; padding: 7px 10px; font-family: 'JetBrains Mono', monospace; font-size: 13px;
 }
 
+/* Daily target / Subject goals cards */
+.target-card {
+  display: flex; align-items: center; gap: 12px;
+  background: var(--ink); border: 1px solid var(--ink-line); border-radius: 14px; padding: 14px 16px;
+}
+.target-card-label { display: flex; align-items: center; gap: 12px; flex-shrink: 0; }
+.target-card-controls { display: flex; align-items: center; gap: 8px; margin-left: auto; }
+
+.subject-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--ink); border: 1px solid var(--ink-line); border-radius: 14px; padding: 14px 16px;
+}
+.subject-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+.session-card {
+  display: flex; flex-direction: column; gap: 10px;
+  background: var(--ink); border: 1px solid var(--ink-line); border-radius: 14px; padding: 14px 16px;
+}
+.session-card-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+
+/* Equal-height cards for Daily target / Subject goals / Add a session */
+.target-card, .subject-card, .session-card { min-height: 104px; box-sizing: border-box; justify-content: space-between; }
+.subject-card-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
 footer { text-align: center; color: var(--ink-line); font-size: 12px; margin-top: 40px; }
 
 @media (max-width: 640px) {
@@ -375,11 +482,13 @@ footer { text-align: center; color: var(--ink-line); font-size: 12px; margin-top
   .nav-tab { font-size: 12px; padding: 8px; }
 
   /* Hero */
-  .hero { padding: 18px 16px; }
+  .hero { padding: 22px 16px; }
   .hero-top { flex-direction: column; gap: 16px; }
   .hero-total { font-size: 40px; }
+  .hero-total-centered { font-size: 40px; }
   .timer-block { text-align: left; width: 100%; }
   .timer-display { font-size: 28px; }
+  .timer-display-centered { font-size: 30px; }
 
   /* Stat strip */
   .stat-strip { grid-template-columns: repeat(2, 1fr); }
@@ -388,6 +497,14 @@ footer { text-align: center; color: var(--ink-line); font-size: 12px; margin-top
 
   /* Subject goal rows — stack vertically */
   .target-row { flex-direction: column; align-items: stretch; }
+
+  /* Daily target / Subject goals cards — stack into two clean rows on mobile */
+  .target-card { flex-direction: column; align-items: stretch; gap: 12px; }
+  .target-card-controls { margin-left: 0; width: 100%; justify-content: space-between; }
+  .subject-card-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .subject-card-actions { width: 100%; justify-content: flex-end; }
+  .session-card-head { flex-direction: column; align-items: stretch; gap: 10px; }
+  .target-card, .subject-card, .session-card { min-height: 0; }
 
   /* Make goal grid stack on mobile */
   [style*="gridTemplateColumns: '1fr auto auto auto auto'"] {

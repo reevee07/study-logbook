@@ -21,6 +21,32 @@ function durationMinutes(s: Session) {
   return Math.max(0, Math.round((new Date(s.end).getTime() - new Date(s.start).getTime()) / 60000));
 }
 
+// Circular ring gauge — used for the per-goal stat cards
+const RING_R = 32;
+const RING_C = 2 * Math.PI * RING_R;
+function ringDashoffset(pct: number) {
+  const clamped = Math.max(0, Math.min(100, pct));
+  return RING_C * (1 - clamped / 100);
+}
+function Ring({ pct, value, label, accent }: { pct: number; value: string; label: string; accent: string }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, flex: '1 1 68px', minWidth: 68 }}>
+      <svg width="72" height="72" viewBox="0 0 76 76">
+        <circle cx="38" cy="38" r={RING_R} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth="6" />
+        <circle
+          cx="38" cy="38" r={RING_R} fill="none"
+          stroke={accent} strokeWidth="6" strokeLinecap="round"
+          strokeDasharray={RING_C} strokeDashoffset={ringDashoffset(pct)}
+          transform="rotate(-90 38 38)"
+          style={{ transition: 'stroke-dashoffset 0.6s ease' }}
+        />
+        <text x="38" y="43" textAnchor="middle" fill="var(--paper)" fontSize={value.length > 4 ? 12 : 14} fontWeight={700}>{value}</text>
+      </svg>
+      <span style={{ color: 'var(--muted)', fontSize: 10, letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center' }}>{label}</span>
+    </div>
+  );
+}
+
 // Subject goal colors — cycling through these for each goal pill
 const SUBJECT_COLORS = [
   { bg: 'rgba(100,200,150,0.12)', border: 'rgba(100,200,150,0.45)', accent: '#64c896', label: 'sage' },
@@ -510,55 +536,100 @@ const updatedGoals = goals.filter(g => g.id !== id);
         </div>
       </div>
 
-      {/* TARGETS & GOALS — separate panel below the hero */}
+      {/* STAT STRIP — one card per goal */}
+      <div className="stat-strip" style={{ flexWrap: 'wrap', gap: 12 }}>
+        {goals.map((goal, idx) => {
+          const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
+          const { subjectMins, goalMins, goalPct, daysLeft, neededPerDay } = goalStats(goal);
+          return (
+            <div
+              key={goal.id}
+              style={{
+                flex: '1 1 320px',
+                background: 'var(--ink-soft)',
+                border: '1px solid var(--ink-line)',
+                borderRadius: 12,
+                padding: '16px 18px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 10,
+              }}
+            >
+              <div style={{ color: color.accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                {goal.name || 'Unnamed goal'}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', justifyContent: 'space-between' }}>
+                <Ring
+                  pct={goalPct}
+                  value={hoursShort(subjectMins)}
+                  label="Logged"
+                  accent="var(--sage)"
+                />
+                <Ring
+                  pct={goalPct}
+                  value={goalMins > 0 ? goalPct + '%' : '—'}
+                  label="Toward goal"
+                  accent="var(--sage)"
+                />
+                <Ring
+                  pct={daysLeft !== null ? Math.min(100, Math.max(0, daysLeft)) : 0}
+                  value={daysLeft !== null ? (daysLeft >= 0 ? String(daysLeft) : 'past due') : '—'}
+                  label="Days left"
+                  accent="var(--sage)"
+                />
+                <Ring
+                  pct={dailyTarget > 0 && neededPerDay !== null ? (neededPerDay / dailyTarget) * 100 : 0}
+                  value={neededPerDay !== null ? hoursShort(neededPerDay) : '—'}
+                  label="Needed / day"
+                  accent="var(--sage)"
+                />
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* TARGETS, GOALS & ADD SESSION — merged into one section */}
       <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div className="target-row" style={{ flexDirection: 'column', gap: 12, alignItems: 'stretch', margin: 0, padding: 0, border: 'none' }}>
           {/* Daily target */}
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 12,
-            flexWrap: 'wrap',
-            background: 'var(--ink)',
-            border: '1px solid var(--ink-line)',
-            borderRadius: 14,
-            padding: '14px 16px',
-          }}>
-            <span style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              width: 30, height: 30, borderRadius: '50%',
-              background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
-            }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <circle cx="12" cy="12" r="9" />
-                <circle cx="12" cy="12" r="4.5" />
-                <circle cx="12" cy="12" r="0.8" fill="currentColor" />
-              </svg>
-            </span>
-            <label htmlFor="dailyTargetInput" style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Daily target</label>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
-              <input type="number" id="dailyTargetInput" min="0" step="0.5"
-                style={{
-                  width: 64, textAlign: 'center', background: 'var(--ink-soft)', border: '1px solid var(--ink-line)',
-                  color: 'var(--paper)', borderRadius: 99, padding: '7px 10px', fontFamily: "'JetBrains Mono', monospace", fontSize: 14,
-                }}
-                value={dailyTarget} onChange={e => setDailyTarget(parseFloat(e.target.value) || 0)} />
-              <span style={{ color: 'var(--muted)', fontSize: 12 }}>hrs</span>
+          <div className="target-card">
+            <div className="target-card-label">
+              <span style={{
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                width: 30, height: 30, borderRadius: '50%',
+                background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
+              }}>
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <circle cx="12" cy="12" r="4.5" />
+                  <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+                </svg>
+              </span>
+              <label htmlFor="dailyTargetInput" style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Daily target</label>
+            </div>
+            <div className="target-card-controls">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input type="number" id="dailyTargetInput" min="0" step="0.5"
+                  style={{
+                    width: 64, textAlign: 'center', background: 'var(--ink-soft)', border: '1px solid var(--ink-line)',
+                    color: 'var(--paper)', borderRadius: 99, padding: '7px 10px', fontFamily: "'JetBrains Mono', monospace", fontSize: 14,
+                  }}
+                  value={dailyTarget} onChange={e => setDailyTarget(parseFloat(e.target.value) || 0)} />
+                <span style={{ color: 'var(--muted)', fontSize: 12 }}>hrs</span>
+              </div>
               <button
                 className="btn btn-ghost small"
                 onClick={saveTargets}
-                style={{ marginLeft: 8, background: targetsSaved ? 'rgba(52,211,153,0.12)' : undefined, borderColor: targetsSaved ? 'rgba(52,211,153,0.4)' : undefined, color: targetsSaved ? '#34d399' : undefined }}
+                style={{ background: targetsSaved ? 'rgba(52,211,153,0.12)' : undefined, borderColor: targetsSaved ? 'rgba(52,211,153,0.4)' : undefined, color: targetsSaved ? '#34d399' : undefined, whiteSpace: 'nowrap' }}
               >{targetsSaved ? '✓ Saved' : 'Save targets'}</button>
             </div>
           </div>
 
          {/* Subject goals */}
-          <div style={{
-            display: 'flex', flexDirection: 'column', gap: 10,
-            background: 'var(--ink)', border: '1px solid var(--ink-line)', borderRadius: 14, padding: '14px 16px',
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+          <div className="subject-card">
+            <div className="subject-card-head">
+              <div className="target-card-label">
                 <span style={{
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   width: 30, height: 30, borderRadius: '50%',
@@ -571,7 +642,7 @@ const updatedGoals = goals.filter(g => g.id !== id);
                 </span>
                 <span style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600 }}>Subject goals</span>
               </div>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div className="subject-card-actions">
                 <button className="btn btn-ghost small" onClick={() => setShowGoalEditor(p => !p)}>
                   {showGoalEditor ? 'Done' : 'Edit goals'}
                 </button>
@@ -588,6 +659,7 @@ const updatedGoals = goals.filter(g => g.id !== id);
                     cursor: 'pointer',
                     fontWeight: 600,
                     letterSpacing: '0.04em',
+                    whiteSpace: 'nowrap',
                   }}
                 >+ Add goal</button>
               )}
@@ -690,70 +762,35 @@ const updatedGoals = goals.filter(g => g.id !== id);
               );
             })}
           </div>
-        </div>
-      </div>
-
-      {/* STAT STRIP — one card per goal */}
-      <div className="stat-strip" style={{ flexWrap: 'wrap', gap: 12 }}>
-        {goals.map((goal, idx) => {
-          const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
-          const { subjectMins, goalMins, goalPct, daysLeft, neededPerDay } = goalStats(goal);
-          return (
-            <div
-              key={goal.id}
-              style={{
-                flex: '1 1 220px',
-                background: color.bg,
-                border: `1px solid ${color.border}`,
-                borderRadius: 12,
-                padding: '14px 18px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 10,
-              }}
-            >
-              <div style={{ color: color.accent, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-                {goal.name || 'Unnamed goal'}
+          {/* Add a session */}
+          <div className="session-card">
+            <div className="session-card-head">
+              <div className="target-card-label">
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                </span>
+                <span style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600 }}>Add a session</span>
               </div>
-              <div style={{ display: 'flex', gap: 18, flexWrap: 'wrap' }}>
-                <div className="stat" style={{ padding: 0, background: 'none', border: 'none' }}>
-                  <div className="stat-label">Logged</div>
-                  <div className="stat-value">{hoursShort(subjectMins)}</div>
-                </div>
-                <div className="stat" style={{ padding: 0, background: 'none', border: 'none' }}>
-                  <div className="stat-label">Toward goal</div>
-                  <div className="stat-value" style={{ color: color.accent }}>{goalMins > 0 ? goalPct + '%' : '—'}</div>
-                </div>
-                <div className="stat" style={{ padding: 0, background: 'none', border: 'none' }}>
-                  <div className="stat-label">Days left</div>
-                  <div className={`stat-value${daysLeft !== null && daysLeft < 0 ? ' brick' : ''}`}>
-                    {daysLeft !== null ? (daysLeft >= 0 ? daysLeft : 'past due') : '—'}
-                  </div>
-                </div>
-                <div className="stat" style={{ padding: 0, background: 'none', border: 'none' }}>
-                  <div className="stat-label">Needed / day</div>
-                  <div className="stat-value">{neededPerDay !== null ? hoursShort(neededPerDay) : '—'}</div>
-                </div>
-              </div>
-              {/* Mini progress bar */}
-              {goalMins > 0 && (
-                <div style={{ height: 4, background: 'rgba(255,255,255,0.08)', borderRadius: 99, overflow: 'hidden' }}>
-                  <div style={{ height: '100%', width: `${Math.min(100, goalPct)}%`, background: color.accent, borderRadius: 99, transition: 'width 0.5s ease' }} />
-                </div>
-              )}
+              <button className="btn btn-ghost small" onClick={() => setShowAddSession(p => !p)}>
+                {showAddSession ? '▲ Hide' : '+ Add session'}
+              </button>
             </div>
-          );
-        })}
-      </div>
-
-      {/* MANUAL ENTRY */}
-      <section className="panel">
-        <div className="panel-head">
-          <h2>Add a session</h2>
-          <button className="btn btn-ghost small" onClick={() => setShowAddSession(p => !p)}>
-            {showAddSession ? '▲ Hide' : '+ Add session'}
-          </button>
+            <button
+              className="btn btn-ghost small"
+              onClick={() => setShowLog(prev => !prev)}
+              style={{ width: '100%', textAlign: 'center' }}
+            >
+              {showLog ? '▲ Hide session log' : '▼ View session log'}
+            </button>
+          </div>
         </div>
+
         {showAddSession && <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'flex-end', marginBottom: 20, paddingBottom: 20, borderBottom: '1px dashed var(--ink-line)' }}>
           <div className="field">
             <label htmlFor="entryDate">Date</label>
@@ -800,16 +837,6 @@ const updatedGoals = goals.filter(g => g.id !== id);
           <button className="btn btn-amber" onClick={handleAddEntry}>Log session</button>
         </div>}
 
-        {/* Logbook list */}
-        <div style={{ marginBottom: 16 }}>
-          <button
-            className="btn btn-ghost small"
-            onClick={() => setShowLog(prev => !prev)}
-            style={{ width: '100%', textAlign: 'center' }}
-          >
-            {showLog ? '▲ Hide session log' : '▼ View session log'}
-          </button>
-        </div>
         {showLog && (loading ? (
           <div style={{ padding: '20px', display: 'flex', justifyContent: 'center' }}><div className="spinner" /></div>
         ) : sessions.length === 0 ? (
@@ -869,7 +896,7 @@ const isCollapsed = collapsedDates.has(date);
         })}
           </div>
         ))}
-      </section>
+      </div>
 
       {/* CHART */}
       <section className="panel">
