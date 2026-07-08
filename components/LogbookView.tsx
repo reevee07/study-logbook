@@ -367,132 +367,210 @@ const updatedGoals = goals.filter(g => g.id !== id);
   return (
     <>
       {/* HERO */}
-      <div className="hero">
-        <div className="hero-top">
-          <div>
-            <div className="hero-label">Today's study time</div>
-            <div className="hero-total">{minutesToLabel(todayMins)}</div>
-            <div className="hero-sub">{todaySessions.length === 1 ? '1 session logged today' : `${todaySessions.length} sessions logged today`}</div>
-          </div>
-          <div className="timer-block">
-            <div className="hero-label" style={{ textAlign: 'right' }}>Live timer</div>
-            <div className={`timer-display${timerRunning ? ' running' : ''}`}>{timerDisplay}</div>
+      <div className="hero" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '32px 28px 30px', position: 'relative', overflow: 'hidden' }}>
 
-            {/* Subject picker — shown before starting */}
-            {showSubjectPicker && !timerRunning && (
-              <div style={{
-                marginTop: 10,
-                background: 'rgba(255,255,255,0.05)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 10,
-                padding: '10px 12px',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: 8,
-              }}>
-                <div style={{ color: 'var(--ink-dim)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>What are you studying?</div>
-                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                  {subjectOptions.map((s, idx) => {
-                    const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
-                    const selected = timerSubject === s;
-                    return (
-                      <button
-                        key={s}
-                        onClick={() => setTimerSubject(s)}
-                        style={{
-                          background: selected ? color.accent : color.bg,
-                          border: `1px solid ${color.border}`,
-                          color: selected ? '#0d1f17' : color.accent,
-                          borderRadius: 20,
-                          padding: '5px 14px',
-                          fontSize: 12,
-                          fontWeight: 700,
-                          cursor: 'pointer',
-                          transition: 'all 0.15s',
-                          letterSpacing: '0.04em',
-                        }}
-                      >{s}</button>
-                    );
-                  })}
-                </div>
-                <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 2 }}>
-                  <button
-                    className="btn btn-ghost small"
-                    onClick={() => { setShowSubjectPicker(false); setTimerSubject(''); }}
-                  >Cancel</button>
-                  <button
-                    className="btn btn-amber"
-                    onClick={() => { setShowSubjectPicker(false); startTimer(); }}
-                  >Start →</button>
-                </div>
-              </div>
-            )}
+        {/* Big total number inside a pill capsule */}
+        {(() => {
+          const label = minutesToLabel(todayMins);
+          const [hrsPart, minsPart] = label.split(' ');
+          return (
+            <div style={{
+              display: 'inline-flex',
+              alignItems: 'baseline',
+              gap: 14,
+              background: 'rgba(255,255,255,0.02)',
+              border: '1px solid var(--ink-line)',
+              borderRadius: 99,
+              padding: '14px 48px',
+              marginTop: 8,
+              marginBottom: 32,
+              fontSize: 56,
+              fontWeight: 700,
+              lineHeight: 1,
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              <span style={{ color: '#34d399' }}>{hrsPart}</span>
+              <span style={{ color: 'var(--paper)' }}>{minsPart}</span>
+            </div>
+          );
+        })()}
 
-            <div style={{ marginTop: 10, display: 'flex', gap: 8, justifyContent: 'flex-end', alignItems: 'center' }}>
-              {!timerRunning ? (
-                !showSubjectPicker && (
+        <div style={{ width: '100%', borderTop: '1px solid var(--ink-line)', marginBottom: 34 }} />
+
+        <div style={{
+          fontSize: 40,
+          fontWeight: 700,
+          letterSpacing: '0.02em',
+          fontFamily: "'JetBrains Mono', monospace",
+          marginBottom: 32,
+          color: timerRunning ? 'var(--amber)' : 'var(--paper)',
+        }}>{timerDisplay}</div>
+
+
+        {/* Subject picker — shown before starting */}
+        {showSubjectPicker && !timerRunning && (
+          <div style={{
+            width: '100%',
+            maxWidth: 360,
+            margin: '0 auto 20px',
+            background: 'rgba(255,255,255,0.05)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 10,
+            padding: '10px 12px',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+          }}>
+            <div style={{ color: 'var(--muted)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, textAlign: 'center' }}>What are you studying?</div>
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', justifyContent: 'center' }}>
+              {subjectOptions.map((s, idx) => {
+                const color = SUBJECT_COLORS[idx % SUBJECT_COLORS.length];
+                const selected = timerSubject === s;
+                return (
                   <button
-                    className="btn btn-amber"
-                    onClick={() => {
-                      if (subjectOptions.length > 0) {
-                        setTimerSubject(subjectOptions[0]);
-                        setShowSubjectPicker(true);
-                      } else {
-                        startTimer();
-                      }
+                    key={s}
+                    onClick={() => setTimerSubject(s)}
+                    style={{
+                      background: selected ? color.accent : color.bg,
+                      border: `1px solid ${color.border}`,
+                      color: selected ? '#0d1f17' : color.accent,
+                      borderRadius: 20,
+                      padding: '5px 14px',
+                      fontSize: 12,
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      transition: 'all 0.15s',
+                      letterSpacing: '0.04em',
                     }}
-                  >Start session</button>
-                )
-              ) : (
-                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                  {timerSubject && (() => {
-                    const idx = subjectOptions.indexOf(timerSubject);
-                    const color = SUBJECT_COLORS[idx >= 0 ? idx % SUBJECT_COLORS.length : 0];
-                    return (
-                      <span style={{
-                        background: color.bg,
-                        border: `1px solid ${color.border}`,
-                        color: color.accent,
-                        borderRadius: 20,
-                        padding: '3px 10px',
-                        fontSize: 11,
-                        fontWeight: 700,
-                        letterSpacing: '0.06em',
-                        textTransform: 'uppercase',
-                      }}>{timerSubject}</span>
-                    );
-                  })()}
-                  <button className="btn btn-stop" onClick={stopTimer}>Stop &amp; log</button>
-                </div>
-              )}
+                  >{s}</button>
+                );
+              })}
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginTop: 2 }}>
+              <button
+                className="btn btn-ghost small"
+                onClick={() => { setShowSubjectPicker(false); setTimerSubject(''); }}
+              >Cancel</button>
+              <button
+                className="btn btn-amber"
+                onClick={() => { setShowSubjectPicker(false); startTimer(); }}
+              >Start →</button>
             </div>
           </div>
+        )}
+
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', alignItems: 'center', marginBottom: 34 }}>
+          {!timerRunning ? (
+            !showSubjectPicker && (
+              <button
+                className="btn btn-amber"
+                style={{ minWidth: 200, justifyContent: 'center', padding: '12px 28px', fontSize: 15 }}
+                onClick={() => {
+                  if (subjectOptions.length > 0) {
+                    setTimerSubject(subjectOptions[0]);
+                    setShowSubjectPicker(true);
+                  } else {
+                    startTimer();
+                  }
+                }}
+              >Start session</button>
+            )
+          ) : (
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+              {timerSubject && (() => {
+                const idx = subjectOptions.indexOf(timerSubject);
+                const color = SUBJECT_COLORS[idx >= 0 ? idx % SUBJECT_COLORS.length : 0];
+                return (
+                  <span style={{
+                    background: color.bg,
+                    border: `1px solid ${color.border}`,
+                    color: color.accent,
+                    borderRadius: 20,
+                    padding: '3px 10px',
+                    fontSize: 11,
+                    fontWeight: 700,
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                  }}>{timerSubject}</span>
+                );
+              })()}
+              <button className="btn btn-stop" style={{ minWidth: 200, justifyContent: 'center', padding: '12px 28px', fontSize: 15 }} onClick={stopTimer}>Stop &amp; log</button>
+            </div>
+          )}
         </div>
 
-        <div className="progress-row" style={{ marginTop: 22 }}>
+        <div className="progress-row" style={{ width: '100%' }}>
           <div className="progress-track">
-            <div className={`progress-fill${progressPct >= 100 ? ' over' : ''}`} style={{ width: `${progressPct}%` }} />
+            <div className={`progress-fill${progressPct >= 100 ? ' over' : ''}`} style={{ width: `${progressPct}%`, background: progressPct >= 100 ? undefined : '#34d399' }} />
           </div>
-          <div className="progress-meta">
+          <div className="progress-meta" style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#34d399', marginTop: 8, fontFamily: "'JetBrains Mono', monospace" }}>
             <span>{targetMins > 0 ? `${minutesToLabel(todayMins)} of ${minutesToLabel(targetMins)} daily target` : `${minutesToLabel(todayMins)} logged — no daily target set`}</span>
             <span>{targetMins > 0 ? progressPct + '%' : '—'}</span>
           </div>
         </div>
+      </div>
 
-        {/* TARGETS ROW */}
-        <div className="target-row" style={{ flexDirection: 'column', gap: 16, alignItems: 'stretch' }}>
+      {/* TARGETS & GOALS — separate panel below the hero */}
+      <div className="panel" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+        <div className="target-row" style={{ flexDirection: 'column', gap: 12, alignItems: 'stretch', margin: 0, padding: 0, border: 'none' }}>
           {/* Daily target */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-            <label htmlFor="dailyTargetInput" style={{ color: 'var(--ink-dim)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600, whiteSpace: 'nowrap' }}>Daily target (hrs)</label>
-            <input type="number" id="dailyTargetInput" min="0" step="0.5" style={{ width: 70 }}
-              value={dailyTarget} onChange={e => setDailyTarget(parseFloat(e.target.value) || 0)} />
-            <button className="btn btn-ghost small" onClick={saveTargets} style={{ marginLeft: 'auto' }}>{targetsSaved ? '✓ Saved' : 'Save targets'}</button>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            flexWrap: 'wrap',
+            background: 'var(--ink)',
+            border: '1px solid var(--ink-line)',
+            borderRadius: 14,
+            padding: '14px 16px',
+          }}>
+            <span style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: 30, height: 30, borderRadius: '50%',
+              background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
+            }}>
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="9" />
+                <circle cx="12" cy="12" r="4.5" />
+                <circle cx="12" cy="12" r="0.8" fill="currentColor" />
+              </svg>
+            </span>
+            <label htmlFor="dailyTargetInput" style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap' }}>Daily target</label>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto' }}>
+              <input type="number" id="dailyTargetInput" min="0" step="0.5"
+                style={{
+                  width: 64, textAlign: 'center', background: 'var(--ink-soft)', border: '1px solid var(--ink-line)',
+                  color: 'var(--paper)', borderRadius: 99, padding: '7px 10px', fontFamily: "'JetBrains Mono', monospace", fontSize: 14,
+                }}
+                value={dailyTarget} onChange={e => setDailyTarget(parseFloat(e.target.value) || 0)} />
+              <span style={{ color: 'var(--muted)', fontSize: 12 }}>hrs</span>
+              <button
+                className="btn btn-ghost small"
+                onClick={saveTargets}
+                style={{ marginLeft: 8, background: targetsSaved ? 'rgba(52,211,153,0.12)' : undefined, borderColor: targetsSaved ? 'rgba(52,211,153,0.4)' : undefined, color: targetsSaved ? '#34d399' : undefined }}
+              >{targetsSaved ? '✓ Saved' : 'Save targets'}</button>
+            </div>
           </div>
 
          {/* Subject goals */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ color: 'var(--ink-dim)', fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase', fontWeight: 600 }}>Subject goals</span>
+          <div style={{
+            display: 'flex', flexDirection: 'column', gap: 10,
+            background: 'var(--ink)', border: '1px solid var(--ink-line)', borderRadius: 14, padding: '14px 16px',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                <span style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  width: 30, height: 30, borderRadius: '50%',
+                  background: 'rgba(52,211,153,0.12)', color: '#34d399', flexShrink: 0,
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4v16" />
+                    <path d="M4 4h13l-2.5 4L17 12H4" />
+                  </svg>
+                </span>
+                <span style={{ color: 'var(--paper)', fontSize: 13, fontWeight: 600 }}>Subject goals</span>
+              </div>
               <div style={{ display: 'flex', gap: 8 }}>
                 <button className="btn btn-ghost small" onClick={() => setShowGoalEditor(p => !p)}>
                   {showGoalEditor ? 'Done' : 'Edit goals'}
