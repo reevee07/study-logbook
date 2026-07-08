@@ -44,17 +44,24 @@ export default function AppShell({ user }: { user: User }) {
 
   return (
     <div className="wrap">
-      <header style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', gap: 16, marginBottom: 28, flexWrap: 'wrap' }}>
-        <h1 style={{ fontSize: 30, letterSpacing: '-0.01em' }}>Studyclash</h1>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="user-chip">
-            <div className="user-avatar">{profile.username[0].toUpperCase()}</div>
-            <div>
-              <div className="user-name">{profile.username}</div>
-              <div className="user-since mono" style={{ fontSize: 11 }}>{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
-            </div>
-          </div>
-          <button className="btn btn-ghost small" onClick={handleSignOut}>Sign out</button>
+      <header className="topbar">
+        <div className="topbar-pill">
+          <span className="topbar-mark">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M13 2 3 14h7l-1 8 11-14h-7l1-6z" />
+            </svg>
+          </span>
+          <h1 className="topbar-logo">Focus<span className="topbar-logo-accent">club</span></h1>
+          <span className="topbar-date mono">{new Date().toLocaleDateString(undefined, { month: 'long', day: 'numeric' })}</span>
+        </div>
+
+        <div className="topbar-user">
+          <span className="topbar-avatar-ring">
+            <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+              <circle cx="12" cy="8" r="4" />
+              <path d="M4 20c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" />
+            </svg>
+          </span>
         </div>
       </header>
 
