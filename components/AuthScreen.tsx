@@ -44,8 +44,8 @@ export default function AuthScreen() {
   return (
     <div className="auth-wrap">
       <div className="auth-card">
-        <h1>Logbook</h1>
-        <p className="auth-subtitle">Study time tracker with real-time leaderboard — compete with friends.</p>
+        <h1 className="topbar-logo auth-logo-text">Focus<span className="topbar-logo-accent">club</span></h1>
+        <p className="auth-subtitle">Where focus becomes a habit.</p>
 
         <div className="auth-tabs">
           <button className={`auth-tab${tab === 'signin' ? ' active' : ''}`} onClick={() => { setTab('signin'); setError(''); setSuccess(''); }}>Sign in</button>
@@ -65,7 +65,7 @@ export default function AuthScreen() {
               <label>Password</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required autoComplete="current-password" />
             </div>
-            <button type="submit" className="btn btn-amber" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} disabled={loading}>
+            <button type="submit" className="btn btn-amber auth-submit" disabled={loading}>
               {loading ? 'Signing in…' : 'Sign in'}
             </button>
           </form>
@@ -83,7 +83,7 @@ export default function AuthScreen() {
               <label>Password (min 6 chars)</label>
               <input type="password" value={password} onChange={e => setPassword(e.target.value)} required minLength={6} autoComplete="new-password" />
             </div>
-            <button type="submit" className="btn btn-amber" style={{ width: '100%', justifyContent: 'center', marginTop: 8 }} disabled={loading}>
+            <button type="submit" className="btn btn-amber auth-submit" disabled={loading}>
               {loading ? 'Creating account…' : 'Create account'}
             </button>
           </form>

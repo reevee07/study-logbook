@@ -151,7 +151,7 @@ export default function LeaderboardView({ currentUserId }: { currentUserId: stri
                 </div>
                 <div className="lb-hours">{minutesToLabel(displayMins)}</div>
                 <div className="lb-today">
-                  {sort !== 'today' && <div style={{ color: 'var(--amber)', fontSize: 11 }}>Today: {minutesToLabel(entry.today_mins)}</div>}
+                  {sort !== 'today' && <div style={{ color: 'var(--sage)', fontSize: 11 }}>Today: {minutesToLabel(entry.today_mins)}</div>}
                   {sort !== 'total' && <div style={{ fontSize: 11 }}>All time: {minutesToLabel(entry.total_mins)}</div>}
                 </div>
               </div>
@@ -182,7 +182,7 @@ export default function LeaderboardView({ currentUserId }: { currentUserId: stri
             <div className="stat-strip" style={{ marginBottom: 0 }}>
               <div className="stat">
                 <div className="stat-label">Today's rank</div>
-                <div className="stat-value amber">#{myRankToday + 1}</div>
+                <div className="stat-value sage">#{myRankToday + 1}</div>
               </div>
               <div className="stat">
                 <div className="stat-label">All-time rank</div>
